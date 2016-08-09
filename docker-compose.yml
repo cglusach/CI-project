@@ -1,0 +1,131 @@
+# CI Project
+# Proyecto para levantar un sistema de versionamiento e integracion continua para el
+# Departamento de Ingenieria en informatica - USACH 2016
+####################################################################################
+#                                    gitlab CE                                     #
+####################################################################################
+# El servicio se compone de dos contenedores 
+# - gitlab-server: El servidor de gitlab 
+# - gitlab-data: donde se almacena la informacion
+gitlab: 
+  # Utilizamos la imagen que mantiene gitlab version estable
+  image: "gitlab/gitlab-ce:8.10.4-ce.0"
+  labels:
+    # rancher labels
+    # soporte de rancher para, en este caso, volumes_from
+    io.rancher.sidekicks: gitlab-data
+    # siempre pull una nueva imagen en cada deploy
+    # io.rancher.container.pull_image: always
+  restart: always
+  #tty: true
+  #stdin_open: true
+  # environment:
+    # gitlab_OMNIBUS_CONFIG: |
+    # external_url "https://gitlab.example.com" 
+    # Add any other gitlab.rb configuration here, each on its own line
+  # Exponemos los puertos necesarios (de manera interna, no al hosts)
+  # No es necesario dado que utilizamos un lb
+  # ports:
+  #  - "80" # http
+  #  - "22" # https
+  #  - "443" # ssl
+
+  volumes_from:
+    - gitlab-data # data storage en otro servicio (escritura y lectura)
+
+# gitlab-data: donde se almacena la informacion del servidor de gitlab
+gitlab-data:
+  image: "gitlab/gitlab-ce:8.10.4-ce.0" # comparte una misma capa, ahorrando espacio
+  labels:
+    # rancher labels
+    # soporte de rancher para manter el contenedor sin correr mientras este
+    # activo gitlab-server
+    io.rancher.container.start_once: true
+    # siempre pull una nueva imagen en cada deploy
+    # io.rancher.container.pull_image: always
+  entrypoint: 
+    - "/bin/true" # el comando devuelve verdadero (succefully)
+  volumes:
+    - "/etc/gitlab" # configuracion
+    - "/var/log/gitlab" # logs
+    - "/var/opt/gitlab" # data
+  #tty: true
+  #stdin_open: true
+
+####################################################################################
+#                                     jenkins                                      #
+####################################################################################
+# El servicio se compone de los siguientes componentes:
+jenkins:
+  image: "rancher/jenkins-master"
+  labels:
+    io.rancher.sidekicks: jenkins-data
+  restart: "no" # No me queda muy claro por que no"
+  #tty: true
+  #stdin_open: true
+  volumes_from:
+    - jenkins-data
+  privileged: true # corre en modo priviligiado 
+
+# jenkins-data: donde se almacena la informacion del master de jenkins
+jenkins-data:
+  image: "rancher/jenkins-master"
+  labels:
+    # rancher labels
+    io.rancher.container.start_once: true
+    # io.rancher.container.pull_image: always
+  entrypoint: 
+    - "/bin/true"
+  volumes:
+    - "/var/jenkins_home" # all data
+  #tty: true
+  #stdin_open: true
+
+# jenkins-slave: https://github.com/rancher/jenkins-slave
+jenkins-slave:
+  image: "rancher/jenkins-slave"
+  # variables de ambiente para acceder al master
+  environment:
+    jenkins_USERNAME: "jenkins"
+    jenkins_PASSWORD: "jenkins"
+    jenkins_MASTER: http://jenkins-master:8080
+    # cantidad de jobs simultaneos - n° cores
+    SLAVE_EXECUTORS: 2 
+  links:
+    - jenkins:jenkins-master
+  privileged: true
+  # volume privado del esclavo
+  volumes:
+    - /var/jenkins
+  #tty: true
+  #stdin_open: true
+
+# load balancer para exponer a jenkins a los slaves
+jenkins-lb:
+  image: rancher/load-balancer-service
+  ports:
+    - "8080"
+  links:
+    - jenkins:jenkins-master
+ #tty: true
+ #stdin_open: true
+  
+####################################################################################
+#                                  Load Balancer                                   #
+####################################################################################
+load-balancer:
+  image: rancher/load-balancer-service
+  ports:
+    - "80:80"
+  links:
+    - gitlab:gitlab
+    - jenkins:jenkins
+  labels:
+    # afinidad a un solo host (deploy del container en un [o varios] host particular)
+    # requiere crear un label lb=true
+    io.rancher.scheduler.affinity:host_label: lb=true
+    # L7 reglas de ruteo
+    io.rancher.loadbalancer.target.gitlab: web.mooc.informatica.usach.cl:80=80
+    io.rancher.loadbalancer.target.jenkins: chat.mooc.informatica.usach.cl:80=8080
+  #tty: true
+  #stdin_open: true

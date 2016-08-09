@@ -1,0 +1,45 @@
+# CI Project
+# Proyecto para levantar un sistema de versionamiento e integracion continua para el
+# Departamento de Ingenieria en informatica - USACH 2016
+####################################################################################
+#                                    gitlab CE                                     #
+####################################################################################
+gitlab-server:
+  scale: 1 # Cantidad de contenedores para el servicio
+  retain_ip: true
+
+gitlab-data:
+  scale: 1
+  retain_ip: true
+
+####################################################################################
+#                                     jenkins                                      #
+####################################################################################
+jenkins:
+  scale: 1
+  retain_ip: true
+
+jenkins-data:
+  scale: 1
+  retain_ip: true
+
+jenkins-slave:
+  scale: 1
+  retain_ip: true
+
+jenkins-lb:
+  scale: 1
+
+####################################################################################
+#                                  Load Balancer                                   #
+####################################################################################
+load-balancer:
+  scale: 1
+  load_balancer_config:
+    name: "lb config"
+  health_check:
+    port: "42"
+    interval: 2000
+    unhealthy_threshold: 3
+    healthy_threshold: 2
+    response_timeout: 2000
