@@ -27,8 +27,8 @@ jenkins-slave:
   scale: 1
   retain_ip: true
 
-jenkins-lb:
-  scale: 1
+#jenkins-lb:
+#  scale: 1
 
 ####################################################################################
 #                                  Load Balancer                                   #

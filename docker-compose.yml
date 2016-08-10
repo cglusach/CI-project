@@ -86,13 +86,13 @@ jenkins-slave:
   image: "rancher/jenkins-slave"
   # variables de ambiente para acceder al master
   environment:
-    jenkins_USERNAME: "jenkins"
-    jenkins_PASSWORD: "jenkins"
-    jenkins_MASTER: http://jenkins-master:8080
+    JENKINS_USERNAME: "jenkins"
+    JENKINS_PASSWORD: "jenkins"
+    JENKINS_MASTER: http://jenkins:8080
     # cantidad de jobs simultaneos - n° cores
     SLAVE_EXECUTORS: 2 
   links:
-    - jenkins:jenkins-master
+    - jenkins:jenkins
   privileged: true
   # volume privado del esclavo
   volumes:
@@ -100,13 +100,13 @@ jenkins-slave:
   #tty: true
   #stdin_open: true
 
-# load balancer para exponer a jenkins a los slaves
-jenkins-lb:
-  image: rancher/load-balancer-service
-  ports:
-    - "8080"
-  links:
-    - jenkins:jenkins-master
+# load balancer
+#jenkins-lb:
+#  image: rancher/load-balancer-service
+#  ports:
+#    - "8080"
+#  links:
+#    - jenkins:jenkins
  #tty: true
  #stdin_open: true
   
