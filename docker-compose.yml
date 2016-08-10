@@ -86,11 +86,11 @@ jenkins-slave:
   image: "rancher/jenkins-slave"
   # variables de ambiente para acceder al master
   environment:
-    JENKINS_USERNAME: "jenkins"
-    JENKINS_PASSWORD: "jenkins"
-    JENKINS_MASTER: http://jenkins:8080
+    JENKINS_USERNAME: "${jenkins_username}"
+    JENKINS_PASSWORD: "${jenkins_password}"
+    JENKINS_MASTER: "${jenkins_master}"
     # cantidad de jobs simultaneos - n° cores
-    SLAVE_EXECUTORS: 2 
+    SLAVE_EXECUTORS: "${jenkins_slave_executors}"
   links:
     - jenkins:jenkins
   privileged: true
