@@ -2,6 +2,34 @@
 # Proyecto para levantar un sistema de versionamiento e integracion continua para el
 # Departamento de Ingenieria en informatica - USACH 2016
 ####################################################################################
+#                                     redis                                        #
+####################################################################################
+# Base de datos NoSQL para almacenar key-value de gitlab. El servicio es un solo 
+# contenedor. Mas informacion en: https://hub.docker.com/r/sameersbn/gitlab/
+redis:
+  image: sameersbn/redis:latest
+  restart: always
+  command:
+    - --loglevel warning
+  volumes:
+  - /srv/docker/gitlab/redis:/var/lib/redis:Z # pq Z???
+####################################################################################
+#                                   postgresql                                     #
+####################################################################################
+# Base de datos SQL para almacenar informacion de gitlab. El servicio es un solo 
+# contenedor. Mas informacion en: https://hub.docker.com/r/sameersbn/gitlab/
+postgresql:
+  # El esquema de la BD esta especificado en el Dockerfile para construir la imagen
+  image: sameersbn/postgresql:9.5
+  restart: always
+  volumes:
+    - /srv/docker/gitlab/postgresql:/var/lib/postgresql:Z # pq Z??
+  environment:
+    DB_USER: 
+    DB_PASS: 
+    DB_NAME: 
+    DB_EXTENSION: 
+####################################################################################
 #                                    gitlab CE                                     #
 ####################################################################################
 # El servicio se compone de dos contenedores 
@@ -26,7 +54,7 @@ gitlab:
   # Exponemos los puertos necesarios (de manera interna, no al hosts)
   # No es necesario dado que utilizamos un lb
   # ports:
-  #  - "80" # http
+  #  - "80:80" # http
   #  - "22" # https
   #  - "443" # ssl
 
@@ -56,6 +84,8 @@ gitlab-data:
 #                                     jenkins                                      #
 ####################################################################################
 # El servicio se compone de los siguientes componentes:
+# - jenkins, (jenkins-master) servidor de jenkins
+# - jenkins-slave, nodos de jenkins para la ejecucion los jobs de jenkins
 jenkins:
   image: "rancher/jenkins-master"
   labels:
@@ -84,13 +114,6 @@ jenkins-data:
 # jenkins-slave: https://github.com/rancher/jenkins-slave
 jenkins-slave:
   image: "rancher/jenkins-slave"
-  # variables de ambiente para acceder al master
-  environment:
-    JENKINS_USERNAME:
-    JENKINS_PASSWORD:
-    JENKINS_MASTER:
-    # cantidad de jobs simultaneos - n° cores
-    SLAVE_EXECUTORS:
   links:
     - jenkins:jenkins
   privileged: true
@@ -99,7 +122,13 @@ jenkins-slave:
     - /var/jenkins
   #tty: true
   #stdin_open: true
-
+  # variables de ambiente para acceder al master
+  environment:
+    JENKINS_USERNAME:
+    JENKINS_PASSWORD:
+    JENKINS_MASTER:
+    # cantidad de jobs simultaneos - n° cores
+    SLAVE_EXECUTORS:
 # load balancer
 #jenkins-lb:
 #  image: rancher/load-balancer-service
