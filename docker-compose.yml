@@ -20,7 +20,7 @@ redis:
 # contenedor. Mas informacion en: https://hub.docker.com/r/sameersbn/gitlab/
 postgresql:
   # El esquema de la BD esta especificado en el Dockerfile para construir la imagen
-  image: sameersbn/postgresql:9.5
+  image: sameersbn/postgresql:9.5-3
   restart: always
   volumes:
     - /srv/docker/gitlab/postgresql:/var/lib/postgresql:Z # pq Z??
@@ -29,19 +29,17 @@ postgresql:
     DB_PASS: 
     DB_NAME: 
     DB_EXTENSION: 
-    #DB_USER: "gitlab"
-    #DB_PASS: "password"
-    #DB_NAME: "gitlabhq_production"
-    #DB_EXTENSION: "pg_trgm"
-
+    
 ####################################################################################
 #                                    gitlab CE                                     #
 ####################################################################################
 # El servicio se compone de dos contenedores 
 # - gitlab-server: El servidor de gitlab 
 # - gitlab-data: donde se almacena la informacion
+# PROBLEMA CON LA IMAGEN DE GITLAB
+# https://github.com/sameersbn/docker-gitlab/issues/904
 gitlab: 
-  image: "sameersbn/gitlab:8.10.5"
+  image: "sameersbn/gitlab:8.14.0"
   links:
     - postgresql:postgresql
     - redis:redis
@@ -89,7 +87,10 @@ gitlab:
     GITLAB_PORT:
     GITLAB_SSH_PORT:
     GITLAB_RELATIVE_URL_ROOT:
+    # pwgen -Bsv1 64
     GITLAB_SECRETS_DB_KEY_BASE:
+    GITLAB_SECRETS_SECRET_KEY_BASE:
+    GITLAB_SECRETS_OTP_KEY_BASE:
 
     GITLAB_ROOT_PASSWORD:
     GITLAB_ROOT_EMAIL:
@@ -122,61 +123,6 @@ gitlab:
     IMAP_SSL:
     IMAP_STARTTLS:
 
-    # DEBUG: false
-    
-    # DB_ADAPTER: "postgresql"
-    # DB_HOST: "postgresql"
-    # DB_PORT: 5432
-    # DB_USER: "gitlab"
-    # DB_PASS: "password"
-    # DB_NAME: "gitlabhq_production"
-
-    # REDIS_HOST: "redis"
-    # REDIS_PORT: 6379
-
-    # TZ: "America/Santiago"
-    # GITLAB_TIMEZONE: "Santiago"
-
-    # GITLAB_HTTPS: false
-    # SSL_SELF_SIGNED: false
-
-    # GITLAB_HOST: "localhost"
-    # GITLAB_PORT: 80
-    # GITLAB_SSH_PORT: 22
-    # GITLAB_RELATIVE_URL_ROOT:
-    # GITLAB_SECRETS_DB_KEY_BASE: "3NhK4jWRMth9vjtVdbxMbJs9rfXbzTPXX7WFxHTkkKNRkzNWHRd3rqwvCKzhHk7c" # pwgen -Bsv1 64
-
-    # GITLAB_ROOT_PASSWORD: "Comando1"
-    # GITLAB_ROOT_EMAIL: "cristobal.acosta@usach.cl"
-
-    # GITLAB_NOTIFY_ON_BROKEN_BUILDS: true
-    # GITLAB_NOTIFY_PUSHER: false
-
-    # GITLAB_EMAIL: "notifications@example.com"
-    # GITLAB_EMAIL_REPLY_TO: "noreply@example.com"
-    # GITLAB_INCOMING_EMAIL_ADDRESS: "reply@example.com"
-
-    # GITLAB_BACKUP_SCHEDULE: "daily"
-    # GITLAB_BACKUP_TIME: "01:00"
-
-    # # https://gitlab.com/gitlab-org/omnibus-gitlab/blob/master/doc/settings/smtp.md
-    # SMTP_ENABLED: true
-    # SMTP_DOMAIN: "www.example.com"
-    # SMTP_HOST: "smtp.sendgrid.net"
-    # SMTP_PORT: 587
-    # SMTP_USER: "udesantiagox"
-    # SMTP_PASS: "Comando1"
-    # SMTP_STARTTLS: true # investigar mas, tengo la duda
-    # SMTP_AUTHENTICATION: "login"
-
-    # IMAP_ENABLED: false
-    # IMAP_HOST: "imap.gmail.com"
-    # IMAP_PORT: 993
-    # IMAP_USER: "mailer@example.com"
-    # IMAP_PASS: "password"
-    # IMAP_SSL: true
-    # IMAP_STARTTLS: false
-
     # hay mas variables de ambiente para gitlab
 
 # gitlab-data: donde se almacena la informacion del servidor de gitlab
@@ -206,7 +152,7 @@ gitlab-data:
 # - jenkins, (jenkins-master) servidor de jenkins
 # - jenkins-slave, nodos de jenkins para la ejecucion los jobs de jenkins
 jenkins:
-  image: "rancher/jenkins-master"
+  image: "techtraits/jenkins-master"
   labels:
     io.rancher.sidekicks: jenkins-data
   restart: "no" # No me queda muy claro por que no"
@@ -214,11 +160,14 @@ jenkins:
   #stdin_open: true
   volumes_from:
     - jenkins-data
-  privileged: true # corre en modo priviligiado 
+  privileged: true # corre en modo priviligiado
+  # Montamos la direccion absoluta de docker en el host 
+  #volumes:
+  #  - /var/run/docker.sock:/var/run/docker.sock
 
 # jenkins-data: donde se almacena la informacion del master de jenkins
 jenkins-data:
-  image: "rancher/jenkins-master"
+  image: "techtraits/jenkins-master"
   labels:
     # rancher labels
     io.rancher.container.start_once: true
@@ -232,7 +181,7 @@ jenkins-data:
 
 # jenkins-slave: https://github.com/rancher/jenkins-slave
 jenkins-slave:
-  image: "rancher/jenkins-slave"
+  image: "techtraits/jenkins-slave"
   links:
     - jenkins:jenkins
   privileged: true
@@ -248,10 +197,6 @@ jenkins-slave:
     JENKINS_MASTER:
     # cantidad de jobs simultaneos - n° cores
     SLAVE_EXECUTORS:
-    #JENKINS_USERNAME: "jenkins"
-    #JENKINS_PASSWORD: "jenkins"
-    #JENKINS_MASTER: "http://jenkins:8080"
-    #SLAVE_EXECUTORS: 2
 
 # load balancer
 #jenkins-lb:
@@ -278,7 +223,8 @@ load-balancer:
     # requiere crear un label lb=true
     io.rancher.scheduler.affinity:host_label: lb=true
     # L7 reglas de ruteo
-    io.rancher.loadbalancer.target.gitlab: web.mooc.informatica.usach.cl:80=80
-    io.rancher.loadbalancer.target.jenkins: chat.mooc.informatica.usach.cl:80=8080
+    io.rancher.loadbalancer.target.gitlab: gitlab.diinf.usach.cl:80=80
+    io.rancher.loadbalancer.target.jenkins: jenkins.diinf.usach.cl:80=8080
+    io.rancher.loadbalancer.target.ghost: pehuelche.diinf.usach.cl:80=80
   #tty: true
   #stdin_open: true
