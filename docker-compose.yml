@@ -20,7 +20,7 @@ redis:
 # contenedor. Mas informacion en: https://hub.docker.com/r/sameersbn/gitlab/
 postgresql:
   # El esquema de la BD esta especificado en el Dockerfile para construir la imagen
-  image: sameersbn/postgresql:9.5-3
+  image: sameersbn/postgresql:9.6-2
   restart: always
   volumes:
     - /srv/docker/gitlab/postgresql:/var/lib/postgresql:Z # pq Z??
@@ -39,7 +39,7 @@ postgresql:
 # PROBLEMA CON LA IMAGEN DE GITLAB
 # https://github.com/sameersbn/docker-gitlab/issues/904
 gitlab: 
-  image: "sameersbn/gitlab:8.14.0"
+  image: sameersbn/gitlab:8.16.6
   links:
     - postgresql:postgresql
     - redis:redis
@@ -211,20 +211,23 @@ jenkins-slave:
 ####################################################################################
 #                                  Load Balancer                                   #
 ####################################################################################
-load-balancer:
-  image: rancher/load-balancer-service
-  ports:
-    - "80:80"
-  links:
-    - gitlab:gitlab
-    - jenkins:jenkins
-  labels:
-    # afinidad a un solo host (deploy del container en un [o varios] host particular)
-    # requiere crear un label lb=true
-    io.rancher.scheduler.affinity:host_label: lb=true
-    # L7 reglas de ruteo
-    io.rancher.loadbalancer.target.gitlab: gitlab.diinf.usach.cl:80=80
-    io.rancher.loadbalancer.target.jenkins: jenkins.diinf.usach.cl:80=8080
-    io.rancher.loadbalancer.target.ghost: pehuelche.diinf.usach.cl:80=80
-  #tty: true
-  #stdin_open: true
+# En la version 1.4 cambia la manera de agregar lb, por lo que ahora todo esto queda
+# comentado y se agregan por UI
+
+# load-balancer:
+#   image: rancher/load-balancer-service
+#   ports:
+#     - "80:80"
+#   links:
+#     - gitlab:gitlab
+#     - jenkins:jenkins
+#   labels:
+#     # afinidad a un solo host (deploy del container en un [o varios] host particular)
+#     # requiere crear un label lb=true
+#     io.rancher.scheduler.affinity:host_label: lb=true
+#     # L7 reglas de ruteo
+#     io.rancher.loadbalancer.target.gitlab: gitlab.diinf.usach.cl:80=80
+#     io.rancher.loadbalancer.target.jenkins: jenkins.diinf.usach.cl:80=8080
+#     io.rancher.loadbalancer.target.ghost: pehuelche.diinf.usach.cl:80=80
+#   #tty: true
+#   #stdin_open: true
