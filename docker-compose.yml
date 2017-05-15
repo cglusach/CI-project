@@ -12,7 +12,8 @@ redis:
   command:
     - --loglevel warning
   volumes:
-  - /srv/docker/gitlab/redis:/var/lib/redis:Z # pq Z???
+  - /srv/docker/ci-project/redis:/var/lib/redis:Z # pq Z???
+
 ####################################################################################
 #                                   postgresql                                     #
 ####################################################################################
@@ -23,13 +24,13 @@ postgresql:
   image: sameersbn/postgresql:9.6-2
   restart: always
   volumes:
-    - /srv/docker/gitlab/postgresql:/var/lib/postgresql:Z # pq Z??
+    - /srv/docker/ci-project/postgresql:/var/lib/postgresql:Z # pq Z??
   environment:
     DB_USER: 
     DB_PASS: 
     DB_NAME: 
     DB_EXTENSION: 
-    
+
 ####################################################################################
 #                                    gitlab CE                                     #
 ####################################################################################
@@ -39,7 +40,7 @@ postgresql:
 # PROBLEMA CON LA IMAGEN DE GITLAB
 # https://github.com/sameersbn/docker-gitlab/issues/904
 gitlab: 
-  image: sameersbn/gitlab:8.16.6
+  image: sameersbn/gitlab:9.1.2
   links:
     - postgresql:postgresql
     - redis:redis
@@ -47,6 +48,7 @@ gitlab:
     # rancher labels
     # soporte de rancher para, en este caso, volumes_from
     io.rancher.sidekicks: gitlab-data
+    # io.rancher.container.dns: true
     # siempre pull una nueva imagen en cada deploy
     # io.rancher.container.pull_image: always
   restart: always
@@ -104,6 +106,20 @@ gitlab:
 
     GITLAB_BACKUP_SCHEDULE:
     GITLAB_BACKUP_TIME:
+    
+    # GITLAB projects features
+    GITLAB_PROJECTS_ISSUES:
+    GITLAB_PROJECTS_MERGE_REQUESTS:
+    GITLAB_PROJECTS_WIKI:
+    GITLAB_PROJECTS_SNIPPETS:
+    GITLAB_PROJECTS_BUILDS:
+    GITLAB_PROJECTS_CONTAINER_REGISTRY:
+
+    # Concurrency
+    UNICORN_WORKERS: 
+    UNICORN_TIMEOUT: 
+    SIDEKIQ_CONCURRENCY: 
+    SIDEKIQ_SHUTDOWN_TIMEOUT: 
 
     # https://gitlab.com/gitlab-org/omnibus-gitlab/blob/master/doc/settings/smtp.md
     SMTP_ENABLED:
@@ -138,7 +154,8 @@ gitlab-data:
   entrypoint: 
     - "/bin/true" # el comando devuelve verdadero (succefully)
   volumes:
-    - "/srv/docker/gitlab/gitlab:/home/git/data:Z"
+    - "/srv/docker/ci-project/gitlab/data:/home/git/data:Z"
+    - "/srv/docker/ci-project/gitlab/log:/home/git/gitlab/log:rw"
     #- "/etc/gitlab" # configuracion
     #- "/var/log/gitlab" # logs
     #- "/var/opt/gitlab" # data
@@ -175,28 +192,43 @@ jenkins-data:
   entrypoint: 
     - "/bin/true"
   volumes:
-    - "/var/jenkins_home" # all data
+    - /srv/docker/ci-project/jenkins:/var/jenkins:Z # pq Z??
   #tty: true
   #stdin_open: true
 
-# jenkins-slave: https://github.com/rancher/jenkins-slave
-jenkins-slave:
-  image: "techtraits/jenkins-slave"
-  links:
-    - jenkins:jenkins
-  privileged: true
-  # volume privado del esclavo
+####################################################################################
+#                                    filebeat                                      #
+####################################################################################
+# para capturar los logs de los servicios
+# - gitlab-data
+filebeat:
+  image: prima/filebeat:latest
   volumes:
-    - /var/jenkins
-  #tty: true
-  #stdin_open: true
-  # variables de ambiente para acceder al master
-  environment:
-    JENKINS_USERNAME:
-    JENKINS_PASSWORD:
-    JENKINS_MASTER:
-    # cantidad de jobs simultaneos - n° cores
-    SLAVE_EXECUTORS:
+    - "/srv/docker/ci-project/gitlab/log:/etc/log/gitlab:ro"
+    - "/srv/docker/ci-project/filebeat/filebeat.yml:/filebeat.yml"
+  labels:
+    io.rancher.scheduler.affinity:host_label: lb=true
+  command: ["filebeat", "-c", "/filebeat.yml", "-e"]
+#  entrypoint: ["/metricbeat/metricbeat", "-system.hostfs=/hostfs"]
+  
+# jenkins-slave: https://github.com/rancher/jenkins-slave
+# jenkins-slave:
+#   image: "techtraits/jenkins-slave"
+#   links:
+#     - jenkins:jenkins
+#   privileged: true
+#   # volume privado del esclavo
+#   volumes:
+#     - /var/jenkins
+#   #tty: true
+#   #stdin_open: true
+#   # variables de ambiente para acceder al master
+#   environment:
+#     JENKINS_USERNAME:
+#     JENKINS_PASSWORD:
+#     JENKINS_MASTER:
+#     # cantidad de jobs simultaneos - n° cores
+#     SLAVE_EXECUTORS:
 
 # load balancer
 #jenkins-lb:

@@ -16,9 +16,22 @@ postgresql:
 ####################################################################################
 #                                    gitlab CE                                     #
 ####################################################################################
-gitlab-server:
+gitlab:
   scale: 1 # Cantidad de contenedores para el servicio
   retain_ip: true
+  health_check:
+    port: "80"
+    request_line: ''
+    # No logro que funcione esto...
+    #request_line: GET /users/sign_in HTTP/1.0
+    #request_line: GET / HTTP/1.0
+    #request_line: GET /health_check.json?token=QbxPhP1k6YkRidkyuDuD HTTP/1.0
+    interval: 2000
+    initializing_timeout: 60000
+    unhealthy_threshold: 3
+    strategy: recreate
+    healthy_threshold: 2
+    response_timeout: 2000
 
 gitlab-data:
   scale: 1
@@ -30,10 +43,27 @@ jenkins:
   scale: 1
   retain_ip: true
 
+  # con rol based authentication es necesario apuntar a /login, endpoint que puede
+  # ser accedido sin necesidad de autenticar.
+  health_check:
+    # puerto donde escucha jenkins
+    port: "8080"
+    # pagina a la que accedemos
+    # ojo, accedemos a /login que no necesita autorizacion
+    request_line: GET /login HTTP/1.0
+    # intervalo en minisegundos
+    interval: 2000
+    initializing_timeout: 60000
+    unhealthy_threshold: 3
+    # estrategia si pasa el umbral 
+    strategy: recreate
+    healthy_threshold: 2
+    response_timeout: 2000
+
 jenkins-data:
   scale: 1
   retain_ip: true
-
+  
 jenkins-slave:
   scale: 1
   retain_ip: true
@@ -43,13 +73,14 @@ jenkins-slave:
 ####################################################################################
 #                                  Load Balancer                                   #
 ####################################################################################
-load-balancer:
-  scale: 1
-  load_balancer_config:
-    name: "lb config"
-  health_check:
-    port: "42"
-    interval: 2000
-    unhealthy_threshold: 3
-    healthy_threshold: 2
-    response_timeout: 2000
+# load-balancer:
+#   scale: 1
+#   load_balancer_config:
+#     name: "lb config"
+  
+#   health_check:
+#     port: "42"
+#     interval: 2000
+#     unhealthy_threshold: 3
+#     healthy_threshold: 2
+#     response_timeout: 2000
