@@ -16,4 +16,4 @@ $RANCHER_COMPOSE/rancher-compose --url $RANCHER_URL \
 								 --debug \
 								 --env-file docker-compose.env \
 								 up \
-								 --recreate
+								 	--recreate

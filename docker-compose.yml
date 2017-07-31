@@ -40,7 +40,7 @@ postgresql:
 # PROBLEMA CON LA IMAGEN DE GITLAB
 # https://github.com/sameersbn/docker-gitlab/issues/904
 gitlab: 
-  image: sameersbn/gitlab:9.1.2
+  image: sameersbn/gitlab:9.4.0-1
   links:
     - postgresql:postgresql
     - redis:redis
@@ -143,7 +143,7 @@ gitlab:
 
 # gitlab-data: donde se almacena la informacion del servidor de gitlab
 gitlab-data:
-  image: "sameersbn/gitlab:8.10.5"
+  image: "library/busybox:latest"
   labels:
     # rancher labels
     # soporte de rancher para manter el contenedor sin correr mientras este
@@ -155,7 +155,7 @@ gitlab-data:
     - "/bin/true" # el comando devuelve verdadero (succefully)
   volumes:
     - "/srv/docker/ci-project/gitlab/data:/home/git/data:Z"
-    - "/srv/docker/ci-project/gitlab/log:/home/git/gitlab/log:rw"
+    #- "/srv/docker/ci-project/gitlab/log:/home/git/gitlab/log:Z"
     #- "/etc/gitlab" # configuracion
     #- "/var/log/gitlab" # logs
     #- "/var/opt/gitlab" # data
@@ -201,15 +201,16 @@ jenkins-data:
 ####################################################################################
 # para capturar los logs de los servicios
 # - gitlab-data
-filebeat:
-  image: prima/filebeat:latest
-  volumes:
-    - "/srv/docker/ci-project/gitlab/log:/etc/log/gitlab:ro"
-    - "/srv/docker/ci-project/filebeat/filebeat.yml:/filebeat.yml"
-  labels:
-    io.rancher.scheduler.affinity:host_label: lb=true
-  command: ["filebeat", "-c", "/filebeat.yml", "-e"]
-#  entrypoint: ["/metricbeat/metricbeat", "-system.hostfs=/hostfs"]
+#filebeat:
+#  image: prima/filebeat:latest
+#  volumes:
+#    - "/srv/docker/ci-project/gitlab/log:/etc/log/gitlab:ro"
+#    - "/srv/docker/ci-project/filebeat/filebeat.yml:/filebeat.yml"
+#  labels:
+#    io.rancher.scheduler.affinity:host_label: lb=true
+#  command: ["filebeat", "-c", "/filebeat.yml", "-e"]
+
+##  entrypoint: ["/metricbeat/metricbeat", "-system.hostfs=/hostfs"]
   
 # jenkins-slave: https://github.com/rancher/jenkins-slave
 # jenkins-slave:
